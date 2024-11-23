@@ -4,6 +4,11 @@ import os
 import random
 import time
 
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 # Initialize Pygame
 pygame.init()
 
@@ -42,15 +47,20 @@ class KnightSurvivalGame:
         self.update_valid_moves()
         print("Game initialized")
 
+
+
+    # Then replace your current load_sprites method in the KnightSurvivalGame class with this:
     def load_sprites(self):
         sprites = {}
         pieces = ['king', 'queen', 'rook', 'knight', 'bishop', 'pawn']
         
         try:
             for piece in pieces:
-                sprite_root_folder = "./sprites"
-                black_path = f'{sprite_root_folder}/b_{piece}_png_shadow_1024px.png'
-                white_path = f'{sprite_root_folder}/w_{piece}_png_shadow_1024px.png'
+                black_path = get_resource_path(os.path.join('sprites', f'b_{piece}_png_shadow_1024px.png'))
+                white_path = get_resource_path(os.path.join('sprites', f'w_{piece}_png_shadow_1024px.png'))
+                
+                # Debug print
+                print(f"Loading sprites from: {black_path} and {white_path}")
                 
                 black_image = pygame.image.load(black_path)
                 white_image = pygame.image.load(white_path)
@@ -61,8 +71,10 @@ class KnightSurvivalGame:
                 sprites[f'black_{piece}'] = black_scaled
                 sprites[f'white_{piece}'] = white_scaled
                 
-        except FileNotFoundError as e:
+        except Exception as e:
             print(f"Error loading sprites: {e}")
+            print(f"Current working directory: {os.getcwd()}")
+            print(f"MEIPASS path (if exists): {getattr(sys, '_MEIPASS', 'Not found')}")
             raise
         
         return sprites
