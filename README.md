@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-This is a simple chess engine built using PyGame. It allows you to play chess against the computer.
+This is a simple chess engine built using PyGame. There is no AI so you can play against yourself.
 
 ## 2. Installation
 
