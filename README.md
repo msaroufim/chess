@@ -4,7 +4,7 @@
 
 This is a simple chess engine built using PyGame
 
-We provide downloads for macOS only for now.
+We provide binaries for macOS M1 chips and Windows only for now.
 
 1. To download the latest release go to https://github.com/msaroufim/chess/releases
 2. Once you download the zip file, unzip it and run the KnightSurvival.app file.
