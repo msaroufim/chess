@@ -2,9 +2,13 @@
 
 ## 1. Introduction
 
-This is a simple chess engine built using PyGame. There is no AI so you can play against yourself.
+This is a simple chess engine built using PyGame
+
+We provide downloads for macOS only for now.
 
 ## 2. Installation
+
+If you want to build from source
 
 ```bash
 pip install -r requirements.txt
@@ -15,4 +19,4 @@ pip install -r requirements.txt
 This repo contains a few variants of chess.
 
 - `python base_chess.py`: Standard chess
-- `python knight_survival.py`: Knight survival. The knight moves like a knight in chess but can only move to squares occupied by enemies. The objective is to survive as long as possible.
+- `python knight_survival.py`: Knight survival

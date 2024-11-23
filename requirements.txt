@@ -1,2 +1,5 @@
 pygame
 pyodide
+PyInstaller
+Pillow
+

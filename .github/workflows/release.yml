@@ -1,0 +1,113 @@
+# .github/workflows/release.yml
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-release:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pygame pyinstaller
+        
+    - name: Create build script for Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+        echo 'import PyInstaller.__main__
+        import os
+        import shutil
+
+        def build_windows():
+            if os.path.exists("build"):
+                shutil.rmtree("build")
+            if os.path.exists("dist"):
+                shutil.rmtree("dist")
+            
+            PyInstaller.__main__.run([
+                "knight_survival.py",
+                "--onefile",
+                "--windowed",
+                "--name=KnightSurvival",
+                "--add-data=sprites/*;sprites",
+                "--clean",
+            ])
+
+        if __name__ == "__main__":
+            build_windows()' > build_windows.py
+      shell: bash
+        
+    - name: Create build script for Mac
+      if: matrix.os == 'macos-latest'
+      run: |
+        echo 'import PyInstaller.__main__
+        import os
+        import shutil
+
+        def build_mac():
+            if os.path.exists("build"):
+                shutil.rmtree("build")
+            if os.path.exists("dist"):
+                shutil.rmtree("dist")
+            
+            PyInstaller.__main__.run([
+                "knight_survival.py",
+                "--onefile",
+                "--windowed",
+                "--name=KnightSurvival",
+                "--add-data=sprites/*:sprites",
+                "--clean",
+            ])
+
+        if __name__ == "__main__":
+            build_mac()' > build_mac.py
+      shell: bash
+
+    - name: Build for Windows
+      if: matrix.os == 'windows-latest'
+      run: python build_windows.py
+
+    - name: Build for Mac
+      if: matrix.os == 'macos-latest'
+      run: python build_mac.py
+
+    - name: Zip Windows artifacts
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd dist
+        7z a KnightSurvival-Windows.zip KnightSurvival.exe
+      shell: bash
+
+    - name: Zip Mac artifacts
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd dist
+        zip -r KnightSurvival-Mac.zip KnightSurvival
+      shell: bash
+
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: release-${{ github.sha }}
+        name: Release ${{ github.sha }}
+        draft: false
+        prerelease: false
+        files: |
+          dist/KnightSurvival-*.zip

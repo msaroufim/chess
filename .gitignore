@@ -1,0 +1,5 @@
+dist/
+build/
+KnightSurvival.spec
+.DS_Store
+.eggs/

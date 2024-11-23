@@ -2,11 +2,12 @@ import pygame
 import sys
 import os
 import random
+import time
 
 # Initialize Pygame
 pygame.init()
 
-# Constants
+# Constants (adding timer-related constants)
 WINDOW_SIZE = 800
 SQUARE_SIZE = WINDOW_SIZE // 8
 WHITE = (255, 255, 255)
@@ -18,9 +19,12 @@ SPAWN_RATE = 1
 MAX_ENEMIES = 5
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
+MOVE_TIME_LIMIT = 5  # 5 seconds per move
+TIMER_HEIGHT = 40
+TIMER_WARNING = 2  # Time in seconds when timer turns red
 
-# Initialize display
-screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
+# Initialize display (adjusted for timer bar)
+screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE + TIMER_HEIGHT))
 pygame.display.set_caption("Knight Survival")
 
 class KnightSurvivalGame:
@@ -33,9 +37,36 @@ class KnightSurvivalGame:
         self.turn_count = 0
         self.score = 0
         self.valid_moves = []
+        self.move_timer = MOVE_TIME_LIMIT
+        self.last_move_time = time.time()
         self.update_valid_moves()
-        print("Game initialized")  # Debug print
+        print("Game initialized")
+
+    def load_sprites(self):
+        sprites = {}
+        pieces = ['king', 'queen', 'rook', 'knight', 'bishop', 'pawn']
         
+        try:
+            for piece in pieces:
+                sprite_root_folder = "./sprites"
+                black_path = f'{sprite_root_folder}/b_{piece}_png_shadow_1024px.png'
+                white_path = f'{sprite_root_folder}/w_{piece}_png_shadow_1024px.png'
+                
+                black_image = pygame.image.load(black_path)
+                white_image = pygame.image.load(white_path)
+                
+                black_scaled = pygame.transform.scale(black_image, (SQUARE_SIZE, SQUARE_SIZE))
+                white_scaled = pygame.transform.scale(white_image, (SQUARE_SIZE, SQUARE_SIZE))
+                
+                sprites[f'black_{piece}'] = black_scaled
+                sprites[f'white_{piece}'] = white_scaled
+                
+        except FileNotFoundError as e:
+            print(f"Error loading sprites: {e}")
+            raise
+        
+        return sprites
+
     def update_valid_moves(self):
         x, y = self.player_pos
         possible_moves = [
@@ -47,7 +78,7 @@ class KnightSurvivalGame:
             if 0 <= move[0] < 8 and 0 <= move[1] < 8 and 
             (move not in self.board or self.board[move]['color'] == 'black')
         ]
-        print(f"Valid moves updated: {self.valid_moves}")  # Debug print
+        print(f"Valid moves updated: {self.valid_moves}")
 
     def spawn_enemy(self):
         if len([p for p in self.board.values() if p['color'] == 'black']) >= MAX_ENEMIES:
@@ -66,18 +97,18 @@ class KnightSurvivalGame:
         if pos in self.board:
             return
             
-        piece_type = random.choice(['bishop', 'knight'])
+        piece_type = random.choice(['bishop', 'rook', 'knight']) 
         self.board[pos] = {
             'piece': piece_type,
             'color': 'black',
             'symbol': 'B' if piece_type == 'bishop' else 'N'
         }
-        print(f"Enemy spawned at {pos}")  # Debug print
+        print(f"Enemy spawned at {pos}")
 
     def move_enemies(self):
         enemies = [(pos, piece) for pos, piece in self.board.items() 
                   if piece['color'] == 'black']
-        print(f"Moving enemies: {len(enemies)} found")  # Debug print
+        print(f"Moving enemies: {len(enemies)} found")
         
         for pos, piece in enemies:
             if pos not in self.board:
@@ -90,11 +121,11 @@ class KnightSurvivalGame:
                 
                 del self.board[pos]
                 self.board[best_move] = piece
-                print(f"Enemy moved from {pos} to {best_move}")  # Debug print
+                print(f"Enemy moved from {pos} to {best_move}")
                 
                 if best_move == self.player_pos:
                     self.game_over = True
-                    print("Game Over - Player captured!")  # Debug print
+                    print("Game Over - Player captured!")
                     return
 
     def get_valid_moves(self, pos):
@@ -126,31 +157,38 @@ class KnightSurvivalGame:
                     
         return valid_moves
 
-    def load_sprites(self):
-        sprites = {}
-        pieces = ['king', 'queen', 'rook', 'knight', 'bishop', 'pawn']
+    def update_timer(self):
+        if not self.game_over and hasattr(self, 'game_started') and self.game_started:
+            current_time = time.time()
+            self.move_timer = max(0, MOVE_TIME_LIMIT - (current_time - self.last_move_time))
+            
+            if self.move_timer <= 0:
+                self.game_over = True
+                print("Game Over - Time's up!")
+                return True
+        return False
+
+    def draw_timer(self):
+        # Draw timer bar background
+        pygame.draw.rect(screen, DARK_GRAY, (0, WINDOW_SIZE, WINDOW_SIZE, TIMER_HEIGHT))
         
-        try:
-            for piece in pieces:
-                sprite_root_folder = "./sprites"
-                black_path = f'{sprite_root_folder}/b_{piece}_png_shadow_1024px.png'
-                white_path = f'{sprite_root_folder}/w_{piece}_png_shadow_1024px.png'
-                
-                black_image = pygame.image.load(black_path)
-                white_image = pygame.image.load(white_path)
-                
-                black_scaled = pygame.transform.scale(black_image, (SQUARE_SIZE, SQUARE_SIZE))
-                white_scaled = pygame.transform.scale(white_image, (SQUARE_SIZE, SQUARE_SIZE))
-                
-                sprites[f'black_{piece}'] = black_scaled
-                sprites[f'white_{piece}'] = white_scaled
-                
-        except FileNotFoundError as e:
-            print(f"Error loading sprites: {e}")
-            raise
+        # Calculate timer bar width
+        timer_width = (self.move_timer / MOVE_TIME_LIMIT) * WINDOW_SIZE
         
-        return sprites
+        # Choose color based on remaining time
+        if self.move_timer <= TIMER_WARNING:
+            timer_color = RED
+        else:
+            timer_color = BLUE
         
+        # Draw timer bar
+        pygame.draw.rect(screen, timer_color, (0, WINDOW_SIZE, timer_width, TIMER_HEIGHT))
+        
+        # Draw timer text
+        font = pygame.font.SysFont('Arial', 24)
+        timer_text = font.render(f"Time: {self.move_timer:.1f}s", True, WHITE)
+        screen.blit(timer_text, (10, WINDOW_SIZE + 8))
+
     def draw(self):
         # Draw board squares
         for row in range(8):
@@ -179,7 +217,6 @@ class KnightSurvivalGame:
                     move_index = self.valid_moves.index((col, row)) + 1
                     font = pygame.font.SysFont('Arial', 32)
                     
-                    # Create a small background circle for better visibility
                     circle_center = (
                         col * SQUARE_SIZE + SQUARE_SIZE//2,
                         row * SQUARE_SIZE + SQUARE_SIZE//2
@@ -187,7 +224,6 @@ class KnightSurvivalGame:
                     pygame.draw.circle(screen, WHITE, circle_center, 20)
                     pygame.draw.circle(screen, BLACK, circle_center, 20, 2)
                     
-                    # Render number in black for better contrast
                     number_text = font.render(str(move_index), True, BLACK)
                     text_rect = number_text.get_rect(center=(
                         col * SQUARE_SIZE + SQUARE_SIZE//2,
@@ -199,14 +235,16 @@ class KnightSurvivalGame:
         font = pygame.font.SysFont('Arial', 24)
         score_text = font.render(f"Score: {self.score}", True, BLACK)
         
-        # Change help text based on game state
-        if not self.game_over:
+        if not hasattr(self, 'game_started') or not self.game_started:
             help_text = font.render("Press SPACE to start! Use number keys (1-8) to move", True, BLACK)
         else:
-            help_text = font.render("Game Over! Press SPACE to restart", True, BLACK)
+            help_text = font.render("Move quickly! Use number keys (1-8) to move", True, BLACK)
         
         screen.blit(score_text, (10, 10))
         screen.blit(help_text, (10, 40))
+        
+        # Draw timer
+        self.draw_timer()
         
         if self.game_over:
             game_over_text = font.render(f"Game Over! Final Score: {self.score}", True, BLACK)
@@ -225,14 +263,16 @@ class KnightSurvivalGame:
         self.turn_count = 0
         self.score = 0
         self.valid_moves = []
+        self.move_timer = MOVE_TIME_LIMIT
+        self.last_move_time = time.time()
+        self.game_started = False
         self.update_valid_moves()
-        print("Game reset")  # Debug print
+        print("Game reset")
 
 def main():
     game = KnightSurvivalGame()
     clock = pygame.time.Clock()
     running = True
-    game_started = False
     
     KEY_MAPPING = {
         pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2, pygame.K_4: 3,
@@ -243,29 +283,33 @@ def main():
     }
     
     while running:
+        # Update timer
+        if hasattr(game, 'game_started') and game.game_started and not game.game_over:
+            game.update_timer()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                print(f"Key pressed: {event.key}")  # Debug print
+                print(f"Key pressed: {event.key}")
                 
                 if event.key == pygame.K_SPACE:
-                    if game.game_over:  # If game is over, reset everything
+                    if game.game_over:
                         game.reset()
-                        game_started = False
-                    if not game_started:  # Start new game
-                        game_started = True
-                        print("Game started!")  # Debug print
+                    if not hasattr(game, 'game_started') or not game.game_started:
+                        game.game_started = True
+                        game.last_move_time = time.time()
+                        print("Game started!")
                         for _ in range(3):
                             game.spawn_enemy()
-                elif game_started and not game.game_over:
+                elif hasattr(game, 'game_started') and game.game_started and not game.game_over:
                     if event.key in KEY_MAPPING:
                         move_index = KEY_MAPPING[event.key]
-                        print(f"Move index: {move_index}")  # Debug print
+                        print(f"Move index: {move_index}")
                         
                         if move_index < len(game.valid_moves):
                             new_pos = game.valid_moves[move_index]
-                            print(f"Moving to: {new_pos}")  # Debug print
+                            print(f"Moving to: {new_pos}")
                             
                             if new_pos in game.board:
                                 del game.board[new_pos]
@@ -273,6 +317,10 @@ def main():
                             del game.board[game.player_pos]
                             game.player_pos = new_pos
                             game.board[new_pos] = {'piece': 'knight', 'color': 'white', 'symbol': 'N'}
+                            
+                            # Reset timer for next move
+                            game.last_move_time = time.time()
+                            game.move_timer = MOVE_TIME_LIMIT
                             
                             game.spawn_enemy()
                             game.move_enemies()
