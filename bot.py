@@ -1,5 +1,6 @@
 import pygame
 import sys
+import os
 
 # Initialize Pygame
 pygame.init()
@@ -22,8 +23,8 @@ class ChessGame:
         self.board = self.init_board()
         self.selected_piece = None
         self.turn = 'white'
-        self.font = pygame.font.SysFont('Arial', 64)
         self.game_over = False
+        self.pieces_sprites = self.load_sprites()
         
     def init_board(self):
         # Initialize standard chess board layout
@@ -65,22 +66,24 @@ class ChessGame:
     def is_checkmate(self, color):
         if not self.is_in_check(color):
             return False
-            
+        
+        # Create a list of positions and pieces to avoid dictionary modification during iteration
+        pieces_to_check = [(pos, piece) for pos, piece in self.board.items() if piece['color'] == color]
+        
         # Try all possible moves for all pieces
-        for pos, piece in self.board.items():
-            if piece['color'] == color:
-                valid_moves = self.get_valid_moves(pos)
-                for move in valid_moves:
-                    # Try move and see if still in check
-                    original_board = self.board.copy()
-                    self.board[move] = self.board[pos]
-                    del self.board[pos]
-                    
-                    still_in_check = self.is_in_check(color)
-                    self.board = original_board
-                    
-                    if not still_in_check:
-                        return False
+        for pos, piece in pieces_to_check:
+            valid_moves = self.get_valid_moves(pos)
+            for move in valid_moves:
+                # Try move and see if still in check
+                original_board = self.board.copy()
+                self.board[move] = self.board[pos]
+                del self.board[pos]
+                
+                still_in_check = self.is_in_check(color)
+                self.board = original_board
+                
+                if not still_in_check:
+                    return False
         return True
 
     def get_valid_moves(self, pos, check_check=True):
@@ -190,12 +193,39 @@ class ChessGame:
                 symbol = 'Q' if piece['color'] == 'white' else 'q'
                 self.board[pos] = {'piece': 'queen', 'color': piece['color'], 'symbol': symbol}
 
+    def load_sprites(self):
+        sprites = {}
+        pieces = ['king', 'queen', 'rook', 'knight', 'bishop', 'pawn']
+        
+        try:
+            for piece in pieces:
+                sprite_root_folder = "./sprites"
+                black_path = f'{sprite_root_folder}/b_{piece}_png_shadow_1024px.png'
+                white_path = f'{sprite_root_folder}/w_{piece}_png_shadow_1024px.png'
+                
+                # Load and scale images
+                black_image = pygame.image.load(black_path)
+                white_image = pygame.image.load(white_path)
+                
+                # Scale images to fit squares
+                black_scaled = pygame.transform.scale(black_image, (SQUARE_SIZE, SQUARE_SIZE))
+                white_scaled = pygame.transform.scale(white_image, (SQUARE_SIZE, SQUARE_SIZE))
+                
+                sprites[f'black_{piece}'] = black_scaled
+                sprites[f'white_{piece}'] = white_scaled
+                
+        except FileNotFoundError as e:
+            print(f"Error loading sprites: {e}")
+            raise
+        
+        return sprites
+
     def draw(self):
         # Draw board
         for row in range(8):
             for col in range(8):
+                # Draw board squares
                 color = WHITE if (row + col) % 2 == 0 else GRAY
-                # Highlight selected piece and valid moves
                 if self.selected_piece and (col, row) == self.selected_piece:
                     color = YELLOW
                 elif self.selected_piece and (col, row) in self.get_valid_moves(self.selected_piece):
@@ -205,19 +235,16 @@ class ChessGame:
                                (col * SQUARE_SIZE, row * SQUARE_SIZE, 
                                 SQUARE_SIZE, SQUARE_SIZE))
                 
-                # Draw pieces using ASCII symbols
+                # Draw pieces
                 pos = (col, row)
                 if pos in self.board:
                     piece = self.board[pos]
-                    # Use dark gray for white pieces on light squares
-                    piece_color = BLACK if piece['color'] == 'black' else (DARK_GRAY if (row + col) % 2 == 0 else WHITE)
-                    text = self.font.render(piece['symbol'], True, piece_color)
-                    text_rect = text.get_rect(center=(col * SQUARE_SIZE + SQUARE_SIZE//2,
-                                                    row * SQUARE_SIZE + SQUARE_SIZE//2))
-                    screen.blit(text, text_rect)
+                    sprite_key = f"{piece['color']}_{piece['piece']}"
+                    sprite = self.pieces_sprites[sprite_key]
+                    screen.blit(sprite, (col * SQUARE_SIZE, row * SQUARE_SIZE))
         
+        # Draw checkmate message if game is over
         if self.game_over:
-            # Display checkmate message
             winner = "Black" if self.turn == "white" else "White"
             font = pygame.font.SysFont('Arial', 32)
             text = font.render(f"{winner} wins by checkmate!", True, BLACK)
