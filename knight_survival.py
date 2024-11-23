@@ -150,9 +150,9 @@ class KnightSurvivalGame:
             raise
         
         return sprites
-# ... (previous code remains the same until the draw method of KnightSurvivalGame class) ...
-
+        
     def draw(self):
+        # Draw board squares
         for row in range(8):
             for col in range(8):
                 color = WHITE if (row + col) % 2 == 0 else GRAY
@@ -166,23 +166,36 @@ class KnightSurvivalGame:
                                (col * SQUARE_SIZE, row * SQUARE_SIZE, 
                                 SQUARE_SIZE, SQUARE_SIZE))
                 
-                if (col, row) in self.valid_moves:
-                    move_index = self.valid_moves.index((col, row)) + 1
-                    font = pygame.font.SysFont('Arial', 32)
-                    number_text = font.render(str(move_index), True, WHITE)
-                    text_rect = number_text.get_rect(center=(
-                        col * SQUARE_SIZE + SQUARE_SIZE//2,
-                        row * SQUARE_SIZE + SQUARE_SIZE//2
-                    ))
-                    screen.blit(number_text, text_rect)
-                
+                # Draw pieces first
                 pos = (col, row)
                 if pos in self.board:
                     piece = self.board[pos]
                     sprite_key = f"{piece['color']}_{piece['piece']}"
                     sprite = self.pieces_sprites[sprite_key]
                     screen.blit(sprite, (col * SQUARE_SIZE, row * SQUARE_SIZE))
+                
+                # Draw move numbers on top of everything
+                if (col, row) in self.valid_moves:
+                    move_index = self.valid_moves.index((col, row)) + 1
+                    font = pygame.font.SysFont('Arial', 32)
+                    
+                    # Create a small background circle for better visibility
+                    circle_center = (
+                        col * SQUARE_SIZE + SQUARE_SIZE//2,
+                        row * SQUARE_SIZE + SQUARE_SIZE//2
+                    )
+                    pygame.draw.circle(screen, WHITE, circle_center, 20)
+                    pygame.draw.circle(screen, BLACK, circle_center, 20, 2)
+                    
+                    # Render number in black for better contrast
+                    number_text = font.render(str(move_index), True, BLACK)
+                    text_rect = number_text.get_rect(center=(
+                        col * SQUARE_SIZE + SQUARE_SIZE//2,
+                        row * SQUARE_SIZE + SQUARE_SIZE//2
+                    ))
+                    screen.blit(number_text, text_rect)
         
+        # Draw UI elements
         font = pygame.font.SysFont('Arial', 24)
         score_text = font.render(f"Score: {self.score}", True, BLACK)
         
