@@ -3,6 +3,7 @@ import sys
 import os
 import random
 import time
+from abilities import AbilityManager, TeleportAbility, SwapAbility, ShieldAbility
 
 def get_resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
@@ -46,6 +47,7 @@ class KnightSurvivalGame:
         self.last_move_time = time.time()
         self.update_valid_moves()
         print("Game initialized")
+        self.ability_manager = AbilityManager()
 
 
 
@@ -258,6 +260,9 @@ class KnightSurvivalGame:
         # Draw timer
         self.draw_timer()
         
+        # Draw the abilities at the bottom of the screen
+        self.ability_manager.draw(screen)
+        
         if self.game_over:
             game_over_text = font.render(f"Game Over! Final Score: {self.score}", True, BLACK)
             text_rect = game_over_text.get_rect(center=(WINDOW_SIZE//2, WINDOW_SIZE//2))
@@ -280,6 +285,40 @@ class KnightSurvivalGame:
         self.game_started = False
         self.update_valid_moves()
         print("Game reset")
+
+    def update(self):
+        # Update timer
+        if hasattr(self, 'game_started') and self.game_started and not self.game_over:
+            self.update_timer()
+        
+        self.ability_manager.update()
+
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            key = event.unicode.lower()
+            if key in ['q', 'w', 'e', 'r']:
+                print(f"Key pressed: {key.upper()}")
+                if self.ability_manager.handle_key(key.upper()):
+                    selected_ability = self.ability_manager.get_selected_ability()
+                    print(f"Selected {selected_ability.name} ability - click target to use")
+                return
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:  # Left click
+                selected_ability = self.ability_manager.get_selected_ability()
+                if selected_ability:
+                    print(f"Trying to use {selected_ability.name}")
+                    # ... rest of your ability execution code ...
+
+    def is_valid_position(self, pos):
+        x, y = pos
+        return 0 <= x < self.board_size and 0 <= y < self.board_size
+
+    def get_board_position(self, mouse_pos):
+        # Convert mouse position to board coordinates
+        x = (mouse_pos[0] - self.board_offset[0]) // self.cell_size
+        y = (mouse_pos[1] - self.board_offset[1]) // self.cell_size
+        return (int(x), int(y))
 
 def main():
     game = KnightSurvivalGame()

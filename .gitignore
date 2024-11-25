@@ -3,3 +3,4 @@ build/
 KnightSurvival.spec
 .DS_Store
 .eggs/
+__pycache__/
